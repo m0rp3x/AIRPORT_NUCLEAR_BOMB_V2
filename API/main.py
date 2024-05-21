@@ -1,11 +1,12 @@
 from fastapi import FastAPI, HTTPException
 import pymssql
-
+from fastapi.responses import FileResponse
+import os
 app = FastAPI()
 
 # Настройки подключения к базе данных
 DATABASE_CONFIG = {
-    "server": "26.70.209.238",
+    "server": "172.17.7.185",
     "database": "MYCOPKA",
     "user": "Yurka",
     "password": "12344321qAA"
@@ -436,26 +437,26 @@ def get_tickets_returned_by_flight_and_date(flight_id: int, date: str, route: st
     DECLARE @Gender NVARCHAR(10) = '{gender}';
 
     SELECT
-        COUNT(T.TicketID) AS ReturnedTicketsCount,
-        P.Gender,
-        DATEDIFF(YEAR, P.BirthDate, @Date) AS Age
-    FROM
-        Airport.Tickets T
-    JOIN
-        Airport.Passengers P ON T.PassengerID = P.PassengerID
-    JOIN
-        Airport.Flights F ON T.FlightID = F.FlightID
-    WHERE
-        F.FlightID = @FlightID
-        AND F.DepartureDateTime BETWEEN @Date AND DATEADD(DAY, 1, @Date)
-        AND F.Route = @Route
-        AND F.TicketPrice = @TicketPrice
-        AND DATEDIFF(YEAR, P.BirthDate, @Date) BETWEEN @MinAge AND @MaxAge
-        AND P.Gender = @Gender
-        AND T.IsCheckedIn = 0; -- Предполагается, что сданные билеты имеют IsCheckedIn = 0
-    GROUP BY
-        P.Gender,
-        DATEDIFF(YEAR, P.BirthDate, @Date);
+    COUNT(T.TicketID) AS ReturnedTicketsCount,
+    P.Gender,
+    DATEDIFF(YEAR, P.BirthDate, @Date) AS Age
+FROM
+    Airport.Tickets T
+JOIN
+    Airport.Passengers P ON T.PassengerID = P.PassengerID
+JOIN
+    Airport.Flights F ON T.FlightID = F.FlightID
+WHERE
+    F.FlightID = @FlightID
+    AND F.DepartureDateTime BETWEEN @Date AND DATEADD(DAY, 1, @Date)
+    AND F.Route = @Route
+    AND F.TicketPrice = @TicketPrice
+    AND DATEDIFF(YEAR, P.BirthDate, @Date) BETWEEN @MinAge AND @MaxAge
+    AND P.Gender = @Gender
+    AND T.IsCheckedIn = 0 -- Предполагается, что сданные билеты имеют IsCheckedIn = 0
+GROUP BY
+    P.Gender,
+    DATEDIFF(YEAR, P.BirthDate, @Date);
     """
     return execute_query(query)
 
@@ -467,6 +468,14 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=1488, reload=True)
 
+@app.get("/huesos/ebaniy")
+def huesos_ebaniy():
+    return {"message": "Ebaniy"}
+
 @app.get("/starie/yeban/xvatit/zadanie/neironkoi/generit")
 def starie_yeban_xvatit_zadanie_neironkoi_generit():
-    return {"message": "Дедуля заебал блядь"}
+    file_path = "static/dedula.gif"
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type='image/gif')
+    else:
+        raise HTTPException(status_code=404, detail="File not found")
