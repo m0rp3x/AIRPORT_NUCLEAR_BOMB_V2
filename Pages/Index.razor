@@ -1,0 +1,150 @@
+﻿@page "/"
+
+@using System.Net.Http
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+<h3>API Explorer</h3>
+
+<div>
+    <label for="apiMethod">Select API Method:</label>
+    <select id="apiMethod" @onchange="OnMethodChange">
+        <option value="">--Select Method--</option>
+        @foreach (var method in apiMethods)
+        {
+            <option value="@method.Value">@method.Key</option>
+        }
+    </select>
+</div>
+
+@if (!string.IsNullOrEmpty(selectedMethod))
+{
+    <div>
+        @foreach (var parameter in parameters)
+        {
+            <div>
+                <label for="@parameter.Name">Enter @parameter.Name:</label>
+                <input type="text" id="@parameter.Name" @bind="parameter.Value" />
+            </div>
+        }
+    </div>
+
+    <button class="btn btn-primary" @onclick="InvokeApi">Invoke API</button>
+}
+
+@if (apiResult != null)
+{
+    <h4>Result:</h4>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                @foreach (var header in apiResultHeaders)
+                {
+                    <th>@header</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in apiResult)
+            {
+                <tr>
+                    @foreach (var cell in row)
+                    {
+                        <td>@cell</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private string selectedMethod;
+    private List<Parameter> parameters = new List<Parameter>();
+    private List<string[]> apiResult;
+    private List<string> apiResultHeaders;
+
+    public class Parameter
+    {
+        public string Name { get; set; }
+        public string Value { get; set; }
+    }
+
+    private readonly Dictionary<string, string> apiMethods = new Dictionary<string, string>
+    {
+        { "Get All Employees", "/employees" },
+        { "Get Employees by Flight ID", "/flights/{flight_id}/employees" },
+        { "Get Department Managers", "/departments/managers" },
+        { "Get Employees by Department ID", "/departments/{department_id}/employees" },
+        { "Get Employees by Gender", "/employees/gender" },
+        { "Get Employees by Age", "/employees/age" },
+        { "Get Employees by Children", "/employees/children" },
+        { "Get Employees by Salary", "/employees/salary" },
+        { "Get Employees by Experience", "/employees/experience" },
+        { "Get Brigades Employees", "/brigades/employees" },
+        { "Get Total Employees by Department", "/departments/employees/total" },
+        { "Get Total Employees in Department", "/departments/{department_name}/employees/total" },
+        { "Get Total Employees by Age", "/employees/age/total" },
+        { "Get Brigade Salary", "/brigades/{brigade_id}/salary" },
+        { "Get Pilots Medical Examination", "/pilots/medical_examination/{year}" },
+        { "Get Pilots by Gender", "/pilots/gender/{year}" },
+        { "Get Pilots by Age", "/pilots/age/{year}" },
+        { "Get Pilots by Salary", "/pilots/salary/{year}" },
+         { "Get Total Aircrafts at Time", "/aircrafts/total_at_time/{datetime}" },
+        { "Get Total Aircrafts Arrival", "/aircrafts/total_arrival/{datetime}" },
+        { "Get Total Aircrafts by Total Flights", "/aircrafts/total_flights/{total_flights}" },
+        { "Get Total Flights by Route and Price", "/flights/total_by_route_price/{route}/{ticket_price}" },
+        { "Get Aircrafts by Total Repairs", "/aircrafts/total_repairs/{num_repairs}/{start_date}/{end_date}" },
+        { "Get Aircrafts by Age", "/aircrafts/by_age/{min_age}" },
+        { "Get Aircrafts Flights Before Repair", "/aircrafts/flights_before_repair/{repair_date}" },
+        { "Get Cancelled Flights by Route", "/flights/cancelled/{route}" },
+        { "Get Delayed Flights by Reason and Route", "/flights/delayed_by_reason/{reason}/{route}" },
+        { "Get Average Sold Tickets by Aircraft Model", "/flights/average_sold_tickets/{aircraft_model}" },
+        { "Get Flights by Type and Model", "/flights/by_type_and_model/{flight_type}/{route}/{aircraft_model}" },
+        { "Get Passengers by Flight and Date", "/passengers/by_flight_and_date/{flight_id}/{date}" },
+        { "Get Booked and Available Seats by Flight", "/flights/booked_and_available_seats/{flight_id}" },
+        { "Get Returned Tickets by Flight ID, Date, Route, Ticket Price, Age, and Gender", "/tickets/returned_by_flight_and_date/{flight_id}/{date}/{route}/{ticket_price}/{min_age}/{max_age}/{gender}" }
+    };
+
+    private async Task OnMethodChange(ChangeEventArgs e)
+    {
+        selectedMethod = e.Value.ToString();
+        parameters.Clear();
+
+        var regex = new System.Text.RegularExpressions.Regex(@"\{(\w+)\}");
+        var matches = regex.Matches(selectedMethod);
+
+        foreach (System.Text.RegularExpressions.Match match in matches)
+        {
+            var parameter = new Parameter();
+            parameter.Name = match.Groups[1].Value;
+            parameters.Add(parameter);
+        }
+    }
+
+    private async Task InvokeApi()
+    {
+        string url = selectedMethod;
+
+        foreach (var parameter in parameters)
+        {
+            url = url.Replace($"{{{parameter.Name}}}", parameter.Value);
+        }
+
+        var response = await Http.GetAsync(url);
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<List<Dictionary<string, object>>>();
+            if (result != null)
+            {
+                apiResultHeaders = result.First().Keys.ToList();
+                apiResult = result.Select(r => r.Values.Select(v => v.ToString()).ToArray()).ToList();
+            }
+        }
+        else
+        {
+            apiResultHeaders = new List<string> { "Error" };
+            apiResult = new List<string[]> { new string[] { response.ReasonPhrase } };
+        }
+    }
+}
