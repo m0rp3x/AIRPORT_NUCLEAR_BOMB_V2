@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 import pymssql
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 import json
 import os
 app = FastAPI()
@@ -135,7 +136,7 @@ def get_employees_by_flight(flight_id: int):
     JOIN Airport.Flights F ON F.AircraftID = A.AircraftID
     WHERE F.FlightID = {flight_id};
     """
-    return execute_query(query)
+    return execute_query(query, fetch_results=True)
 
 @app.get("/employees/age/total")
 def get_total_employees_by_age():
@@ -483,22 +484,34 @@ GROUP BY
     """
     return execute_query(query)
 
+# Модель данных для ввода
+class Pilot(BaseModel):
+    employee_id: int
 #если не будет работать сделать гет запросом
-@app.post("/add/pilots/{pilot_id}/{employee_id}/{medicalcheckpassed}")
-def get_tickets(pilot_id:int, employee_id:int, medicalcheckpassed:int):
-    query = f"""
-    SET IDENTITY_INSERT Airport.Pilots ON
-    DECLARE @PilotID INT = {pilot_id};
-    DECLARE @EmployeeID INT = {employee_id};
-    DECLARE @MedicalCheckPassed BIT = {int(medicalcheckpassed)};  -- Convert bool to int
-    INSERT INTO Airport.Pilots (PilotID, EmployeeID, MedicalCheckPassed)
-    VALUES (@PilotID, @EmployeeID, @MedicalCheckPassed);
-    SET IDENTITY_INSERT Airport.Pilots OFF    
-    
-    
-    
-    
+@app.post("/add/pilots/")
+def add_pilot(pilot:Pilot):
+    query_insert = f"""
+    DECLARE @EmployeeID INT = {pilot.employee_id};
+    INSERT INTO Airport.Pilots (EmployeeID)
+    VALUES (@EmployeeID)
     """
+    execute_query(query_insert)
+    # Предполагается, что у пилотов есть уникальный идентификатор PilotID
+    query_select = f"""
+        SELECT p.*, e.*
+        FROM Airport.Pilots p
+        INNER JOIN Airport.Employees e ON p.EmployeeID = e.EmployeeID
+        WHERE p.EmployeeID = {pilot.employee_id}
+        """
+    return execute_query(query_select, fetch_results=True)
+
+@app.delete("/pilots/{pilotID}")
+def delete_pilot(pilotID: int):
+    query = f"DELETE FROM Airport.Pilots WHERE PilotID = {pilotID};"
+    result = execute_query(query)
+    if result["status"] == "error":
+        raise HTTPException(status_code=400, detail=result["message"])
+    return result
 
 
 if __name__ == "__main__":
