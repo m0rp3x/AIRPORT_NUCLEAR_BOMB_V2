@@ -1,18 +1,25 @@
 from fastapi import FastAPI, HTTPException
 import pymssql
 from fastapi.responses import FileResponse
+import json
 import os
 app = FastAPI()
 
-# Настройки подключения к базе данных
+# Функция для чтения конфигурации из файла
+def load_config(file_path):
+    with open(file_path, 'r') as file:
+        config = json.load(file)
+    return config
 
+# Загрузка конфигурации
+config = load_config('config.json')
 
-# Функция для выполнения SQL-запросов
+# Применение конфигурации
 DATABASE_CONFIG = {
-    "server": "26.70.209.238",
-    "database": "MYCOPKA",
-    "user": "Yurka",
-    "password": "12344321qAA"
+    "server": config["server"],
+    "database": config["database"],
+    "user": config["user"],
+    "password": config["password"]
 }
 
 # Функция для выполнения SQL-запросов
