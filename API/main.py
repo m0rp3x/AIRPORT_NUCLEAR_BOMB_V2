@@ -5,23 +5,31 @@ import os
 app = FastAPI()
 
 # Настройки подключения к базе данных
+
+
+# Функция для выполнения SQL-запросов
 DATABASE_CONFIG = {
-    "server": "172.17.7.185",
+    "server": "26.70.209.238",
     "database": "MYCOPKA",
     "user": "Yurka",
     "password": "12344321qAA"
 }
 
 # Функция для выполнения SQL-запросов
-def execute_query(query: str):
+def execute_query(query: str, fetch_results: bool = False):
     try:
         with pymssql.connect(**DATABASE_CONFIG) as conn:
             with conn.cursor(as_dict=True) as cursor:
                 cursor.execute(query)
-                results = cursor.fetchall()
-                return results
+                if fetch_results:
+                    results = cursor.fetchall()
+                    return results
+                else:
+                    conn.commit()  # Commit changes for modification queries
+                    return {"status": "success", "message": "Operation successful!"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # Объекты Pydantic моделей (если нужны)
 
@@ -34,7 +42,15 @@ def read_root():
 @app.get("/employees")
 def get_all_employees():
     query = "SELECT * FROM Airport.Employees;"
-    return execute_query(query)
+    return execute_query(query, fetch_results=True)
+
+@app.delete("/employees/{employee_id}")
+def delete_employee(employee_id: int):
+    query = f"DELETE FROM Airport.Employees WHERE EmployeeID = {employee_id};"
+    result = execute_query(query)
+    if result["status"] == "error":
+        raise HTTPException(status_code=400, detail=result["message"])
+    return result
 
 @app.get("/departments/managers")
 def get_department_managers():
@@ -460,10 +476,24 @@ GROUP BY
     """
     return execute_query(query)
 
+#если не будет работать сделать гет запросом
+@app.post("/add/pilots/{pilot_id}/{employee_id}/{medicalcheckpassed}")
+def get_tickets(pilot_id:int, employee_id:int, medicalcheckpassed:int):
+    query = f"""
+    SET IDENTITY_INSERT Airport.Pilots ON
+    DECLARE @PilotID INT = {pilot_id};
+    DECLARE @EmployeeID INT = {employee_id};
+    DECLARE @MedicalCheckPassed BIT = {int(medicalcheckpassed)};  -- Convert bool to int
+    INSERT INTO Airport.Pilots (PilotID, EmployeeID, MedicalCheckPassed)
+    VALUES (@PilotID, @EmployeeID, @MedicalCheckPassed);
+    SET IDENTITY_INSERT Airport.Pilots OFF    
+    
+    
+    
+    
+    """
 
-# Остальные маршруты и функции CRUD здесь...
 
-# Запуск приложения
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=1488, reload=True)

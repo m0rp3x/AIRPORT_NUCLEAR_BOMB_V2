@@ -32,7 +32,6 @@
     <button class="btn btn-primary" @onclick="InvokeApi">Invoke API</button>
 }
 
-
 @if (apiResult != null)
 {
     <h4>Result:</h4>
@@ -43,6 +42,7 @@
                 {
                     <th>@header</th>
                 }
+                <th>Actions</th> <!-- Add actions column header -->
             </tr>
         </thead>
         <tbody>
@@ -53,6 +53,9 @@
                     {
                         <td>@cell</td>
                     }
+                    <td>
+                        <button class="btn btn-danger" @onclick="() => DeleteEmployee(row[0])">Delete</button> <!-- Assuming the ID is in the first column -->
+                    </td>
                 </tr>
             }
         </tbody>
@@ -91,7 +94,7 @@
         { "Get Pilots by Gender", "/pilots/gender/{year}" },
         { "Get Pilots by Age", "/pilots/age/{year}" },
         { "Get Pilots by Salary", "/pilots/salary/{year}" },
-         { "Get Total Aircrafts at Time", "/aircrafts/total_at_time/{datetime}" },
+        { "Get Total Aircrafts at Time", "/aircrafts/total_at_time/{datetime}" },
         { "Get Total Aircrafts Arrival", "/aircrafts/total_arrival/{datetime}" },
         { "Get Total Aircrafts by Total Flights", "/aircrafts/total_flights/{total_flights}" },
         { "Get Total Flights by Route and Price", "/flights/total_by_route_price/{route}/{ticket_price}" },
@@ -105,7 +108,8 @@
         { "Get Passengers by Flight and Date", "/passengers/by_flight_and_date/{flight_id}/{date}" },
         { "Get Booked and Available Seats by Flight", "/flights/booked_and_available_seats/{flight_id}" },
         { "Get Returned Tickets by Flight ID, Date, Route, Ticket Price, Age, and Gender", "/tickets/returned_by_flight_and_date/{flight_id}/{date}/{route}/{ticket_price}/{min_age}/{max_age}/{gender}" },
-        { "ненавижу деда", "/starie/yeban/xvatit/zadanie/neironkoi/generit" }
+        { "ненавижу деда", "/starie/yeban/xvatit/zadanie/neironkoi/generit" },
+        {"Get Tickets Returned By Flight And Date","/add/pilots/{pilot_id}/{employee_id}/{medicalcheckpassed}"}
     };
 
     private async Task OnMethodChange(ChangeEventArgs e)
@@ -142,6 +146,20 @@
                 apiResultHeaders = result.First().Keys.ToList();
                 apiResult = result.Select(r => r.Values.Select(v => v.ToString()).ToArray()).ToList();
             }
+        }
+        else
+        {
+            apiResultHeaders = new List<string> { "Error" };
+            apiResult = new List<string[]> { new string[] { response.ReasonPhrase } };
+        }
+    }
+
+    private async Task DeleteEmployee(string employeeId)
+    {
+        var response = await Http.DeleteAsync($"/employees/{employeeId}");
+        if (response.IsSuccessStatusCode)
+        {
+            await InvokeApi(); // Refresh the data after deletion
         }
         else
         {
